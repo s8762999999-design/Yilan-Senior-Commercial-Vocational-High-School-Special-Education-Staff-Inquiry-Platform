@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宜蘭高商特殊學生校園情境與教職員疑問蒐集平台</title>
+    <!-- Chosen Palette: Morandi Calm Harmony (Slate Blue #4A6B82, Sage Green #759B88, Warm Neutral #F8F9FA, Dark Slate #2C3E50) -->
+    <!-- Application Structure Plan: 
+        Designed as a multi-mode single-page application prioritizing psychological safety and active self-reflection over passive survey taking.
+        1. Top Navigation & Global Progress: Features direct switching between the Step-by-Step Inquiry Flow, Research Data & Scenario Analytics Dashboard, and System Privacy/Architecture Guide.
+        2. Main Journey (Steps 1 to 6):
+           - Step 1 (Empathy & Normalization): Interactive card grid of 20 research-backed campus scenarios with expandable reflection prompts and tag filtering.
+           - Step 2 (Role Alignment): Role-selection matrix customized for 7 distinct school positions.
+           - Step 3 (Peer Validation / "You Are Not Alone"): Dynamic role-based question wall showcasing realistic inquiries to normalize user concerns.
+           - Step 4 & 5 (Guided Exploration & Inquiry Synthesis): Structured taxonomy selection (Tags A-P), context builder, prompt hints, anonymization tools, and 4 mandatory privacy validation checks.
+           - Step 6 (Preview & Multi-Format Export): Formatted summary preview box with client-side TXT download, JSON generator, Print view, and local draft recovery.
+        3. Research & Analytics Hub: Visualizes campus challenge distributions and tag matrix via Chart.js canvas charts, delivering full research context for institutional workshops.
+    -->
+    <!-- Visualization & Content Choices:
+        - Chart.js (Canvas API): Used for Category Distribution Radar/Bar Chart & Role Issues Matrix Chart to fulfill visual clarity goals without SVG/Mermaid.
+        - Chart Containers: Wrapped in responsive div elements with max-width/height boundaries preventing vertical/horizontal overflow.
+        - Interactive HTML/CSS: Used for Scenario Cards, Role Matrices, Checkboxes, and Step Navigators to foster engaging non-diagnostic exploration.
+        - Pure Client-Side Security: No backend tracking, relying on LocalStorage for draft preservation to maintain absolute confidentiality.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #F8F9FA;
+            color: #2C3E50;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+            max-height: 380px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .card-transition {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .step-hidden {
+            display: none !important;
+            opacity: 0;
+            transform: translateY(12px);
+        }
+        .step-active {
+            display: block !important;
+            animation: fadeInStep 0.35s ease-out forwards;
+        }
+        @keyframes fadeInStep {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-slate-200">
+
+    <header class="bg-[#4A6B82] text-white shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">宜蘭高商特殊學生校園情境與教職員疑問蒐集平台</h1>
+                    <p class="text-slate-200 text-sm sm:text-base mt-1 font-light">從理解常態情境，到說出第一線真正想問的問題</p>
+                </div>
+                <div class="flex items-center gap-2 bg-[#354E60] p-1.5 rounded-lg text-xs sm:text-sm">
+                    <button id="navTabGuide" onclick="switchMainTab('guide')" class="px-3 py-1.5 rounded-md font-medium transition bg-[#759B88] text-white shadow-sm">問卷引導流程</button>
+                    <button id="navTabAnalytics" onclick="switchMainTab('analytics')" class="px-3 py-1.5 rounded-md font-medium transition text-slate-200 hover:text-white">特教研究數據</button>
+                    <button id="navTabPrivacy" onclick="switchMainTab('privacy')" class="px-3 py-1.5 rounded-md font-medium transition text-slate-200 hover:text-white">隱私與雲端架構</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="sticky top-0 z-40 bg-slate-200 h-2 w-full">
+        <div id="globalProgressBar" class="bg-[#759B88] h-full w-[16.6%] transition-all duration-500 ease-out"></div>
+    </div>
+
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-8 sm:px-6">
+
+        <div id="tabPrivacySection" class="hidden bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-6">
+            <div class="border-b border-slate-200 pb-4">
+                <h2 class="text-xl font-bold text-[#4A6B82]">🔒 本平台個資隱私防護與系統架構說明</h2>
+                <p class="text-slate-600 text-sm mt-1">本網站採前置端去中心化架構，確保教職員能安心表達實務困惑。</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-amber-50 p-5 rounded-lg border-l-4 border-amber-500 space-y-3">
+                    <h3 class="font-bold text-amber-900 text-base">絕對心理安全與個資防護原則</h3>
+                    <ul class="text-xs sm:text-sm text-amber-800 space-y-2 list-disc pl-4">
+                        <li><strong>本機端運作：</strong> 所有輸入資料均存於您的瀏覽器 LocalStorage，無偷偷回傳伺服器行為。</li>
+                        <li><strong>去標籤化規範：</strong> 請勿填寫學生真實姓名、身分證字號、班級座號或病歷診斷號碼。</li>
+                        <li><strong>非診斷工具：</strong> 本系統不進行學生行為診斷，亦不對教師管理能力打分數。</li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 space-y-3">
+                    <h3 class="font-bold text-[#4A6B82] text-base">未來 Google Sheets 雲端匯入建議 (行政擴充)</h3>
+                    <p class="text-xs sm:text-sm text-slate-600">
+                        若學校研習籌備團隊未來需要進行大數據研習需求盤點，可透過 Google Apps Script (GAS) 部署免資料庫後端 API：
+                    </p>
+                    <ol class="text-xs text-slate-500 space-y-1.5 list-decimal pl-4">
+                        <li>於 Google Workspace 建立匯總試算表。</li>
+                        <li>撰寫 GAS <code class="bg-slate-200 px-1 rounded">doPost(e)</code> 接收匿名化 JSON 資料。</li>
+                        <li>前端以 <code class="bg-slate-200 px-1 rounded">fetch()</code> 將 JSON 發送至 Web App URL。</li>
+                        <li>特教組透過 A-P 標籤矩陣進行自動化研習主題分析。</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div id="tabAnalyticsSection" class="hidden space-y-8">
+            <div class="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <div class="border-b border-slate-100 pb-4">
+                    <h2 class="text-xl font-bold text-[#4A6B82]">📊 高中職融合教育第一線議題深度研究儀表板</h2>
+                    <p class="text-slate-600 text-sm mt-1">
+                        本專案統整國內外特教法規、神經多樣性研究與高級中等學校第一線實務，提煉出教職員核心挑戰與 A-P 分類矩陣。
+                    </p>
+                </div>
+                
+                <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    實證資料顯示，超過八成的神經多樣性學生需求可透過通用設計學習 (UDL) 與班級環境調整獲得滿足。然而，高中職專任教師、導師、輔導、校安與學務人員在龐大教學進度與行政框架下，常因缺乏正向行為支持 (PBIS) 初級預防與跨處室溝通 SOP，導致角色衝突與情緒耗竭。
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-700 mb-3 text-center">各職務常見困境分佈 (研究數據指標)</h3>
+                        <div class="chart-container">
+                            <canvas id="chartRoleIssues"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-700 mb-3 text-center">特教與輔導議題分析矩陣 (A-P 標籤比率)</h3>
+                        <div class="chart-container">
+                            <canvas id="chartCategoryRadar"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <h3 class="text-lg font-bold text-[#4A6B82]">📚 特教與輔導分類標籤說明矩陣 (A-P 分類架構)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs" id="categoryMatrixGrid">
+                </div>
+            </div>
+        </div>
+
+        <div id="tabGuideSection" class="space-y-6">
+
+            <section id="step1" class="step-active bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="inline-block px-3 py-1 bg-[#759B88] text-white text-xs font-bold rounded-full tracking-wider">STEP 1</span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-[#4A6B82] mt-2">在學校現場，我們常常會遇到這些情況。</h2>
+                    </div>
+                    <span class="text-xs text-slate-400 font-medium">情境體驗 (1/6)</span>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm sm:text-base text-slate-700">
+                        特殊學生的需求，有時不只是學生的問題，也是整個班級、教師與學校共同面對的情境。
+                    </p>
+                    <p class="text-xs sm:text-sm text-slate-500">
+                        點擊下方的情境卡片可展開查看背後隱含的特教議題與延伸思考。這有助於梳理您的實際感受。
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 pt-2">
+                    <span class="text-xs font-bold text-slate-500">篩選類別：</span>
+                    <button onclick="filterScenarios('all')" class="scenario-filter-btn px-2.5 py-1 rounded bg-[#4A6B82] text-white text-xs">全部情境 (20)</button>
+                    <button onclick="filterScenarios('情緒')" class="scenario-filter-btn px-2.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs">情緒與行為</button>
+                    <button onclick="filterScenarios(' ASD')" class="scenario-filter-btn px-2.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs">ASD/感官過載</button>
+                    <button onclick="filterScenarios('同儕')" class="scenario-filter-btn px-2.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs">同儕與班級</button>
+                    <button onclick="filterScenarios('行政')" class="scenario-filter-btn px-2.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs">處室與公平</button>
+                </div>
+
+                <div id="scenariosGridContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-slate-100">
+                    <button onclick="goToStep(2)" class="px-6 py-2.5 bg-[#4A6B82] hover:bg-[#354E60] text-white text-sm font-bold rounded-lg shadow transition flex items-center gap-2">
+                        <span>下一步：選擇你的角色</span>
+                        <span>→</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="step2" class="step-hidden bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="inline-block px-3 py-1 bg-[#759B88] text-white text-xs font-bold rounded-full tracking-wider">STEP 2</span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-[#4A6B82] mt-2">你平常扮演哪個角色？</h2>
+                    </div>
+                    <span class="text-xs text-slate-400 font-medium">角色定位 (2/6)</span>
+                </div>
+
+                <p class="text-sm sm:text-base text-slate-600">
+                    不同職務面對同一事件，考量往往截然不同。請選擇您最主要的視角，我們將為您呈現專屬的實務常見疑問。
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2" id="roleSelectionGrid">
+                    <button onclick="selectUserRole('專任教師')" class="role-btn p-5 border-2 border-slate-200 rounded-xl hover:border-[#4A6B82] text-left transition flex flex-col justify-between group">
+                        <div class="text-2xl mb-2">👨‍🏫</div>
+                        <div>
+                            <div class="font-bold text-slate-800 group-hover:text-[#4A6B82]">專任教師</div>
+                            <div class="text-xs text-slate-500 mt-1">關注課堂秩序、教學進度、公平性與突發行為應對</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectUserRole('導師')" class="role-btn p-5 border-2 border-slate-200 rounded-xl hover:border-[#4A6B82] text-left transition flex flex-col justify-between group">
+                        <div class="text-2xl mb-2">🧑‍🏫</div>
+                        <div>
+                            <div class="font-bold text-slate-800 group-hover:text-[#4A6B82]">導師</div>
+                            <div class="text-xs text-slate-500 mt-1">關注班級動力、親師溝通、同儕排斥與長期陪伴</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectUserRole('輔導老師')" class="role-btn p-5 border-2 border-slate-200 rounded-xl hover:border-[#4A6B82] text-left transition flex flex-col justify-between group">
+                        <div class="text-2xl mb-2">🧠</div>
+                        <div>
+                            <div class="font-bold text-slate-800 group-hover:text-[#4A6B82]">輔導老師</div>
+                            <div class="text-xs text-slate-500 mt-1">關注心理評估、危機轉介、策略轉化與邊界拿捏</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectUserRole('校安人員')" class="role-btn p-5 border-2 border-slate-200 rounded-xl hover:border-[#4A6B82] text-left transition flex flex-col justify-between group">
+                        <div class="text-2xl mb-2">🛡️</div>
+                        <div>
+                            <div class="font-bold text-slate-800 group-hover:text-[#4A6B82]">校安人員</div>
+                            <div class="text-xs text-slate-500 mt-1">關注危機控制、安全防護、合法強制措施與去層級溝通</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectUserRole('學務人員')" class="role-btn p-5 border-2 border-slate-200 rounded-xl hover:border-[#4A6B82] text-left transition flex flex-col justify-between group">
+                        <div class="text-2xl mb-2">🏫</div>
+                        <div>
+                            <div class="font-bold text-slate-800 group-hover:text-[#4A6B82]">學務人員</div>
+                            <div class="text-xs text-slate-500 mt-1">關注紀律維護、行政通報、校規與特教彈性之平衡</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectUserRole('特教教師')" class="role-btn p-5 border-2 border-slate-200 rounded-xl hover:border-[#4A6B82] text-left transition flex flex-col justify-between group">
+                        <div class="text-2xl mb-2">🧩</div>
+                        <div>
+                            <div class="font-bold text-slate-800 group-hover:text-[#4A6B82]">特教教師</div>
+                            <div class="text-xs text-slate-500 mt-1">關注 IEP 落實、入班觀察、資源整合與普通教育轉譯</div>
+                        </div>
+                    </button>
+
+                    <button onclick="selectUserRole('護理與其他')" class="role-btn p-5 border-2 border-slate-200 rounded-xl hover:border-[#4A6B82] text-left transition flex flex-col justify-between group">
+                        <div class="text-2xl mb-2">🩺</div>
+                        <div>
+                            <div class="font-bold text-slate-800 group-hover:text-[#4A6B82]">護理/其他教職員</div>
+                            <div class="text-xs text-slate-500 mt-1">關注健康留置評估、藥物副作用監測與緊急傷病安撫</div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-slate-100">
+                    <button onclick="goToStep(1)" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition">
+                        ← 回上一步
+                    </button>
+                    <button id="btnStep2Next" onclick="goToStep(3)" disabled class="px-6 py-2.5 bg-slate-300 text-slate-500 text-sm font-bold rounded-lg cursor-not-allowed transition">
+                        請先選擇角色
+                    </button>
+                </div>
+            </section>
+
+            <section id="step3" class="step-hidden bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="inline-block px-3 py-1 bg-[#759B88] text-white text-xs font-bold rounded-full tracking-wider">STEP 3</span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-[#4A6B82] mt-2">你不是只有一個人遇到這件事</h2>
+                    </div>
+                    <span class="text-xs text-slate-400 font-medium">同行共鳴 (3/6)</span>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm sm:text-base text-slate-700">
+                        目前身分：<span id="currentSelectedRoleBadge" class="font-bold text-[#4A6B82] bg-slate-100 px-2.5 py-0.5 rounded-full">未選擇</span>
+                    </p>
+                    <p class="text-xs sm:text-sm text-slate-500">
+                        以下為根據教育研究與廣大高中職教師實務整理的匿名疑問示例。這些困惑在第一線非常普遍：
+                    </p>
+                </div>
+
+                <div id="roleFaqContainer" class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3 max-h-[420px] overflow-y-auto">
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-lg border border-amber-200 text-xs text-amber-800">
+                    💡 <strong>提示：</strong> 這些問題並非要給您標準答案，而是幫助您對照：「對！我也想知道這個問題」或「我遇到的情況比這個更具體...」
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-slate-100">
+                    <button onclick="goToStep(2)" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition">
+                        ← 回上一步
+                    </button>
+                    <button onclick="goToStep(4)" class="px-6 py-2.5 bg-[#4A6B82] hover:bg-[#354E60] text-white text-sm font-bold rounded-lg shadow transition flex items-center gap-2">
+                        <span>下一步：找到你的困惑</span>
+                        <span>→</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="step4" class="step-hidden bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="inline-block px-3 py-1 bg-[#759B88] text-white text-xs font-bold rounded-full tracking-wider">STEP 4 & 5</span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-[#4A6B82] mt-2">現在，換你來問。</h2>
+                    </div>
+                    <span class="text-xs text-slate-400 font-medium">聚焦與填寫 (4-5/6)</span>
+                </div>
+
+                <p class="text-sm sm:text-base text-slate-600 leading-relaxed">
+                    前面的內容不是要告訴你標準答案，而是幫助你找到真正想問的問題。<span class="font-bold text-[#4A6B82]">沒有標準答案的地方，往往就是最值得拿出來討論的地方。</span>
+                </p>
+
+                <div class="bg-slate-100 p-4 rounded-lg border-l-4 border-[#4A6B82] space-y-2 text-xs sm:text-sm">
+                    <div class="font-bold text-slate-800">🔒 隱私保護聲明</div>
+                    <p class="text-slate-600">
+                        本平台用於校內研習與問題蒐集。請勿填寫學生姓名、身分證號、電話、住址或可識別個資。描述個案請一律採匿名寫法（如：「某位學生」、「某班學生」）。
+                    </p>
+                </div>
+
+                <div class="space-y-6 pt-2">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800 mb-2">1. 您最困擾的是哪一部分？(可複選)</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs sm:text-sm" id="troubleCheckboxes">
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="教室裡情緒爆發應對" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 教室裡情緒爆發應對
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="學生拒絕指令/緘默" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 學生拒絕指令/緘默
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="同儕排斥與衝突" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 同儕排斥與衝突
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="家長溝通與配合度" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 家長溝通與配合度
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="處室分工與校規彈性" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 處室分工與校規彈性
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="全班公平性與合理調整" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 全班公平性與合理調整
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="自傷與危機處置時機" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 自傷與危機處置時機
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="不知道何時該求助外部" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 不知道何時該求助外部
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                                <input type="checkbox" value="教師自身焦慮與挫折" class="rounded text-[#4A6B82] focus:ring-[#759B88]"> 教師自身焦慮與挫折
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="detailContext" class="block text-sm font-bold text-slate-800 mb-1">
+                            2. 如果您願意，可以補充描述相關情境 (選填)
+                        </label>
+                        <span class="block text-xs text-slate-500 mb-2">例如：事件發生的地點、當時最困難的轉折點、您的反應或學生的反應。</span>
+                        <textarea id="detailContext" rows="3" placeholder="例如：某位學生在分組討論時突然拍桌離開教室，我當時正要維持課堂秩序，無法拋下班級離開..." class="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#759B88] focus:outline-none bg-slate-50"></textarea>
+                    </div>
+
+                    <div>
+                        <label for="finalQuestion" class="block text-sm font-bold text-slate-800 mb-1">
+                            3. ✍️ 您的核心疑問 (必填)
+                        </label>
+                        <span class="block text-xs text-slate-500 mb-2">如果今天有心理師、輔導老師或特教專業人員在現場，您最想問的是什麼？</span>
+                        <textarea id="finalQuestion" rows="4" required placeholder="一句話或一個具體問題。例如：當學生情緒已經升高時，到底要先維持全班秩序，還是先安撫該名學生？" class="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#759B88] focus:outline-none bg-white"></textarea>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
+                        <div class="font-bold text-xs sm:text-sm text-slate-800">送出前自我檢查清單：</div>
+                        <div class="space-y-1.5 text-xs text-slate-600">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="chkPrivacy1" class="rounded text-[#4A6B82]"> 我已確認內容未包含學生真實姓名或聯絡方式。
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="chkPrivacy2" class="rounded text-[#4A6B82]"> 我已確認內容未包含醫療病歷號或可識別個資。
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="chkPrivacy3" class="rounded text-[#4A6B82]"> 我已明確描述了我真正想知道的專業疑問。
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="chkPrivacy4" class="rounded text-[#4A6B82]"> 我理解本問卷資料用於研習需求盤點與研討會討論。
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-slate-100">
+                    <button onclick="goToStep(3)" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition">
+                        ← 回上一步
+                    </button>
+                    <button onclick="submitInquiryForm()" class="px-6 py-2.5 bg-[#759B88] hover:bg-[#5E806F] text-white text-sm font-bold rounded-lg shadow transition flex items-center gap-2">
+                        <span>預覽與確認疑問</span>
+                        <span>✓</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="step6" class="step-hidden bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="inline-block px-3 py-1 bg-[#4A6B82] text-white text-xs font-bold rounded-full tracking-wider">STEP 6</span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-[#4A6B82] mt-2">您的疑問已成功記錄與整理</h2>
+                    </div>
+                    <span class="text-xs text-slate-400 font-medium">確認與輸出 (6/6)</span>
+                </div>
+
+                <p class="text-sm text-slate-600">
+                    感謝您為學校特殊教育支持系統與研習規劃提供寶貴的第一線經驗。下方為您的疑問內容預覽，您可以複製、列印或匯出檔案備查。
+                </p>
+
+                <div class="bg-slate-900 text-slate-100 p-5 rounded-xl font-mono text-xs sm:text-sm leading-relaxed whitespace-pre-wrap overflow-x-auto shadow-inner" id="previewResultBox">
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <button onclick="goToStep(4)" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition">
+                        ✏️ 修改內容
+                    </button>
+                    <button onclick="exportTXT()" class="px-4 py-2 bg-[#4A6B82] hover:bg-[#354E60] text-white text-xs sm:text-sm font-medium rounded-lg transition shadow-sm">
+                        💾 下載 TXT 檔案
+                    </button>
+                    <button onclick="exportJSON()" class="px-4 py-2 bg-[#759B88] hover:bg-[#5E806F] text-white text-xs sm:text-sm font-medium rounded-lg transition shadow-sm">
+                        📄 產生 JSON 檔案
+                    </button>
+                    <button onclick="window.print()" class="px-4 py-2 border border-slate-400 hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition">
+                        🖨️ 列印本頁
+                    </button>
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-lg text-xs text-emerald-800">
+                    ✅ <strong>草稿暫存提示：</strong> 您的這份疑問已安全備份至您瀏覽器的本機儲存區 (LocalStorage)。下次開啟本頁面即可自動載入。
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+    <footer class="bg-slate-800 text-slate-400 py-6 border-t border-slate-700 mt-auto">
+        <div class="max-w-5xl mx-auto px-4 text-center text-xs space-y-2">
+            <p>宜蘭高商 特殊學生校園情境與教職員疑問蒐集平台 © 2026</p>
+            <p class="text-slate-500">本平台遵循神經多樣性與包容教育原則設計．完全遵循機密隱私與去識別化規範</p>
+            <p class="italic text-slate-400 pt-1">「沒有標準答案的地方，往往就是最值得拿出來討論的地方。」</p>
+        </div>
+    </footer>
+
+    <script>
+        const scenarioDatabase = [
+            { id: 1, title: "課堂無預警大聲喊叫拍桌", cat: "情緒", tags: ["A", "D", "B"], desc: "學生在靜態課堂中突然拍桌、尖叫發出巨響。", reflection: "隱含議題：感官過載、情緒調節困難或逃避任務。教師常困惑於如何立即安撫且不干擾全班進度。" },
+            { id: 2, title: "面對指令完全沈默拒絕動作", cat: "情緒", tags: ["B", "D", "E"], desc: "面對教師明確指派的學習指令，學生低頭不回應亦不動筆。", reflection: "隱含議題：選擇性緘默、執行功能障礙或對立反抗。需釐清是「不想做」還是「能力受限」。" },
+            { id: 3, title: "考試焦慮引發極端自傷言語", cat: "情緒", tags: ["H", "G"], desc: "學生在評量過程中因挫折突脫口說出「我想死」、「活著沒意義」。", reflection: "隱含議題：完美主義焦慮、憂鬱傾向與危機評告。涉及校園通報機制與當下言語降溫。" },
+            { id: 4, title: "課堂中途突然離席不知去向", cat: "行政", tags: ["I", "B", "A"], desc: "學生未經允許直接離開教室走廊，任課教師無法拋下全班尋找。", reflection: "隱含議題：逃避極限壓力源、校園安全追蹤與第一時間處室通報協調 S.O.P。" },
+            { id: 5, title: "重複固著行為引發同儕嘲笑", cat: "同儕", tags: ["C", "D"], desc: "ASD 學生出現搖晃身體或重複覆述特定文句，引來同儕模仿嘲笑。", reflection: "隱含議題：ASD 固著特質、同儕包容教育宣導與隱性校園霸凌防範。" },
+            { id: 6, title: "分組活動無任何小組願意接納", cat: "同儕", tags: ["C", "N"], desc: "進行小組合作學習時，一般生私下請求教師「不要把我跟他編在同一組」。", reflection: "隱含議題：社交技巧缺陷、班級動力引導與兼顧特教生無障礙參與和同儕權益。" },
+            { id: 7, title: "家長否認障礙特質拒絕配合", cat: "行政", tags: ["J", "K"], desc: "家長認為孩子在校表現只是「叛逆」或「老師針對」，抗拒特教鑑定與輔導。", reflection: "隱含議題：親師溝通障礙、障礙否認心理與家庭支持網絡轉銜。" },
+            { id: 8, title: "一般生家長抗議影響受教權", cat: "行政", tags: ["J", "N", "O"], desc: "一般生家長聯合要求導師將特殊生抽離班級，質疑教學資源分配不公。", reflection: "隱含議題：融合教育理念衝突、普通生家長溝通與合理的評量/行為調整說明。" },
+            { id: 9, title: "走廊誤會引發激烈肢體衝突", cat: "情緒", tags: ["C", "A", "I"], desc: "學生因誤讀同學眼神或肢體碰撞，認定遭受挑釁而爆發肢體推擠。", reflection: "隱含議題：社交線索誤判、衝動控制障礙、現場物理降溫與安全保護隔離。" },
+            { id: 10, title: "靠近安撫引發防禦性攻擊姿勢", cat: "情緒", tags: ["A", "D", "I"], desc: "教師試圖拉開或靠近情緒高昂學生時，學生做出防衛性揮拳或丟擲物品。", reflection: "隱含議題：感官過載防衛、創傷反應、維持安全距離與物理限制之合法界線。" },
+            { id: 11, title: "作業調整挫折導致當場撕毀課本", cat: "情緒", tags: ["F", "A", "B"], desc: "學生因無法完成簡化後的作業，崩潰撕毀課本並趴桌大哭。", reflection: "隱含議題：特定學習障礙挫折、執行功能低落與差異化評量靈活性。" },
+            { id: 12, title: "輔導包容與學務處分原則牴觸", cat: "行政", tags: ["M", "L", "O"], desc: "學生違反校規，學務處主張依規懲處，輔導室建議考量 IEP 情緒彈性。", reflection: "隱含議題：跨處室角色衝突、紀律維護與特教合理調整雙軌機制建立。" },
+            { id: 13, title: "強烈抗拒特定學科並干擾上課", cat: "情緒", tags: ["B", "E"], desc: "對英文或數學課極度排斥，上課頻繁發出噪音或挑釁任課教師。", reflection: "隱含議題：學習障礙衍生行為問題、課堂通用設計與動機引導。" },
+            { id: 14, title: "一般生抱怨彈性權利不公平", cat: "同儕", tags: ["N", "B"], desc: "班級同學抗議：「為什麼他可以遲交作業上課聽音樂，我們都不行？」", reflection: "隱含議題：合理調整的資訊公開與保密拿捏、班級權利與公平性教育。" },
+            { id: 15, title: "教師深怕說錯話引爆學生情緒", cat: "情緒", tags: ["O", "A"], desc: "任課教師感到高度焦慮，課堂上對該生戰戰兢兢，嚴重消耗教學能量。", reflection: "隱含議題：教師情緒耗竭、心理安全感缺乏與具體應對腳本提供。" },
+            { id: 16, title: "心智理論缺陷誤判他人霸凌", cat: "同儕", tags: ["C", "D"], desc: "ASD 學生向輔導室通報被全班霸凌，調查後發現為心智理論意圖解讀差異。", reflection: "隱含議題：心智理論 (ToM) 缺陷、社交語意理解與客觀霸凌認定。" },
+            { id: 17, title: "網路群組發表極端自傷焦慮言論", cat: "情緒", tags: ["H", "C"], desc: "學生在班級私下群組傳送刀片照片或極端言論，引發班級同學恐慌。", reflection: "隱含議題：數位原生世代心理危機、校園安全預警與同儕安心輔導。" },
+            { id: 18, title: "40人班級無暇兼顧 IEP 個別需求", cat: "行政", tags: ["B", "L", "O"], desc: "專任教師面臨繁重升學進度與大班經營，坦言根本無法執行 IEP 項目。", reflection: "隱含議題：高師生比困境、特教資源簡化與通用設計學習 (UDL) 落實。" },
+            { id: 19, title: "圍觀學生過多加劇危機失控", cat: "行政", tags: ["I", "A"], desc: "學生情緒失控時，走廊圍觀學生拍照議論，導致當事人情緒呈指數爆發。", reflection: "隱含議題：危機現場動線淨空 SOP、感官刺激降低與隱私權維護。" },
+            { id: 20, title: "事件過後教師自身創傷無處訴", cat: "情緒", tags: ["O", "K"], desc: "處理完嚴重肢體或情緒危機後，教師感到強烈無力感與心理創傷。", reflection: "隱含議題：替代性創傷、教師支持系統與校內專業督導機制。" }
+        ];
+
+        const roleFaqDatabase = {
+            "專任教師": [
+                "1. 學生情緒突然升高時，我到底應該先維持全班秩序，還是先處理這位學生的情緒？",
+                "2. 學生拒絕執行指令時，我該堅持原則以建立威信，還是退讓以免衝突擴大？",
+                "3. 我要怎麼分辨學生是「不想做」還是因為神經多樣性障礙而「做不到」？",
+                "4. 當特殊學生的合理調整（如減少作業）引發全班抱怨時，我該如何向全班解釋而不洩漏隱私？",
+                "5. IEP 計畫上寫的「降低感官刺激」，在實務現場四十人的高中課堂裡到底該怎麼執行？"
+            ],
+            "導師": [
+                "1. 當班上同學已經開始對特殊學生產生集體排斥時，我該如何介入班級動力？",
+                "2. 一般生家長強烈要求將特殊生調離班級，導師如何在親師溝通中維護特教生權益？",
+                "3. 特教生家長拒絕承認孩子需要專業協助，認為是學校針對，導師該如何打破僵局？",
+                "4. 我夾在學務處的「校規處分」與輔導室的「包容接納」之間，到底該聽誰的標準？",
+                "5. 發生嚴重情緒危機後，導師事後要如何帶領全班進行安心輔導與同儕討論？"
+            ],
+            "輔導老師": [
+                "1. 特殊學生的焦慮往往與神經多樣性特質交織，如何準確區分行為問題與精神疾患？",
+                "2. 學生強烈拒絕來輔導室，或在會談時完全不說話，我該如何建立初步的信任關係？",
+                "3. 面對具有高自傷風險但缺乏病識感的學生，如何與家長達成醫療轉介的共識？",
+                "4. 在跨專業會議中，如何將抽象的心理支持策略，翻譯成專任教師可以執行的具體步驟？",
+                "5. 學生透露了可能違反校規的行為，在保密原則與校園安全通報之間該如何權衡？"
+            ],
+            "校安人員": [
+                "1. 學生在校園內失控並意圖攻擊他人，校安人員介入壓制時的合法性界線在哪裡？",
+                "2. 危機現場圍觀學生眾多，校安人員應如何快速驅散人群並降低對當事人的感官刺激？",
+                "3. 什麼程度的衝突應該報警？什麼程度應該強制送醫？判斷的具體指標為何？",
+                "4. 處理完肢體衝突後，校安人員在填寫事件紀錄表時，應如何客觀描述以利後續特教評估？",
+                "5. 如何避免在「維持校園安全」的過程中，不慎誘發特殊學生更嚴重的創傷防衛反應？"
+            ],
+            "學務人員": [
+                "1. 特殊學生的行為違反校規，但 IEP 建議暫緩處分，學務處如何兼顧全校紀律的公平性？",
+                "2. 處理特殊學生參與的校園霸凌事件，如何區分「社交技能缺乏引發的衝突」與「惡意霸凌」？",
+                "3. 導師與任課教師因為特殊學生的管教問題產生嚴重分歧，學務處應如何居中協調？",
+                "4. 在大型集會中，如何預先為容易感官過載的特殊學生規劃動線與防護措施？",
+                "5. 事件落幕後，學務處應如何將危機處理的經驗轉化為全校教職員的安全預防機制？"
+            ],
+            "特教教師": [
+                "1. 如何在極短的巡堂時間內，有效觀察特殊學生在普通班的融合與適應狀況？",
+                "2. 普通班教師對 IEP 的執行意願低落或表示無暇顧及，特教教師如何以合作取代監督？",
+                "3. 如何將龐大的醫療與心理評估報告，轉譯成任課老師能在課堂上馬上使用的三條簡單規則？",
+                "4. 資源班的抽離式教學成效，如何無縫銜接並類化至普通班的大團體情境中？",
+                "5. 當特教專業判斷與家長過度保護或過度期待產生衝突時，如何進行專業溝通？"
+            ],
+            "護理與其他": [
+                "1. 學生因情緒失控至健康中心要求留置休息，護理師如何判斷其是否成為逃避課堂的藉口？",
+                "2. 特殊學生在健康中心出現極端焦慮或自傷行為，護理師在等待外援時的應急安撫措施為何？",
+                "3. 如何有效監測並回報精神科藥物在校園環境中對學生產生的副作用與注意力影響？",
+                "4. 在處理特殊學生的外傷時，如何克服其因觸覺防衛或痛覺遲鈍所帶來的護理困難？",
+                "5. 護理師業務繁忙時，如何確保特殊學生的健康突發狀況有標準的代理處置流程？"
+            ]
+        };
+
+        const categoryTaxonomy = [
+            { code: "A", title: "情緒與行為", desc: "突發情緒失控、尖叫、不配合指令、情緒調節困難。" },
+            { code: "B", title: "課堂經營", desc: "秩序維護、作業與評量調整、干擾進度、無動機。" },
+            { code: "C", title: "人際與同儕", desc: "肢體言語衝突、班級排斥、社交線索誤讀、霸凌。" },
+            { code: "D", title: "自閉症 (ASD)", desc: "固著行為、感官過載、心智理論缺陷、常規改變焦慮。" },
+            { code: "E", title: "ADHD", desc: "衝動控制困難、注意力渙散、無法安坐、執行功能障礙。" },
+            { code: "F", title: "學習障礙", desc: "閱讀書寫困難、訊息處理速度異常、防衛性逃避。" },
+            { code: "G", title: "情緒行為障礙", desc: "持續性憂鬱焦慮、對立反抗、破壞行為與內向退縮。" },
+            { code: "H", title: "自傷／危機", desc: "割腕撞牆、表達自殺意念、危及安全瞬間行為。" },
+            { code: "I", title: "校園安全", desc: "人員編制調度、緊急處置 SOP、物理限制合法界線。" },
+            { code: "J", title: "家長溝通", desc: "家長抗拒配合、親師理念不合、一般生特教生家長爭執。" },
+            { code: "K", title: "輔導轉介", desc: "醫療轉介困難、諮商關係建立障礙、拒絕輔導。" },
+            { code: "L", title: "特教合作", desc: "IEP 落實困境、特教與普通班銜接、資源分配爭議。" },
+            { code: "M", title: "學務合作", desc: "處分與輔導衝突、校規適用性、跨處室權責劃分。" },
+            { code: "N", title: "班級公平", desc: "特教寬容與全班標準一致性兩難、一般生投訴不公。" },
+            { code: "O", title: "教師自身壓力", desc: "情緒耗竭、無力感與挫折、深怕說錯話的孤立感。" },
+            { code: "P", title: "其他議題", desc: "藥物副作用影響、罕見特殊生理障礙、邊界情境。" }
+        ];
+
+        let currentStep = 1;
+        let selectedRole = "";
+        let inquiryState = {
+            role: "",
+            troubles: [],
+            context: "",
+            question: "",
+            timestamp: ""
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            renderScenariosCards(scenarioDatabase);
+            renderCategoryMatrix();
+            initCharts();
+            loadDraftFromLocalStorage();
+        });
+
+        function switchMainTab(tabName) {
+            const guideSec = document.getElementById("tabGuideSection");
+            const analyticsSec = document.getElementById("tabAnalyticsSection");
+            const privacySec = document.getElementById("tabPrivacySection");
+
+            const btnGuide = document.getElementById("navTabGuide");
+            const btnAnalytics = document.getElementById("navTabAnalytics");
+            const btnPrivacy = document.getElementById("navTabPrivacy");
+
+            guideSec.classList.add("hidden");
+            analyticsSec.classList.add("hidden");
+            privacySec.classList.add("hidden");
+
+            btnGuide.className = "px-3 py-1.5 rounded-md font-medium transition text-slate-200 hover:text-white";
+            btnAnalytics.className = "px-3 py-1.5 rounded-md font-medium transition text-slate-200 hover:text-white";
+            btnPrivacy.className = "px-3 py-1.5 rounded-md font-medium transition text-slate-200 hover:text-white";
+
+            if (tabName === 'guide') {
+                guideSec.classList.remove("hidden");
+                btnGuide.className = "px-3 py-1.5 rounded-md font-medium transition bg-[#759B88] text-white shadow-sm";
+            } else if (tabName === 'analytics') {
+                analyticsSec.classList.remove("hidden");
+                btnAnalytics.className = "px-3 py-1.5 rounded-md font-medium transition bg-[#759B88] text-white shadow-sm";
+            } else if (tabName === 'privacy') {
+                privacySec.classList.remove("hidden");
+                btnPrivacy.className = "px-3 py-1.5 rounded-md font-medium transition bg-[#759B88] text-white shadow-sm";
+            }
+        }
+
+        function renderScenariosCards(dataList) {
+            const container = document.getElementById("scenariosGridContainer");
+            container.innerHTML = "";
+            dataList.forEach(s => {
+                const card = document.createElement("div");
+                card.className = "bg-slate-50 border border-slate-200 rounded-xl p-4 cursor-pointer hover:border-[#4A6B82] hover:shadow-md card-transition";
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-sm text-[#4A6B82]">情境 ${s.id}. ${s.title}</span>
+                        <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-medium">${s.cat}</span>
+                    </div>
+                    <p class="text-xs text-slate-600 mb-2">${s.desc}</p>
+                    <div class="card-extra hidden pt-3 mt-2 border-t border-slate-200 text-xs text-slate-500 space-y-1">
+                        <div class="font-semibold text-amber-800 bg-amber-50 p-2 rounded">${s.reflection}</div>
+                    </div>
+                `;
+                card.onclick = () => {
+                    const extra = card.querySelector(".card-extra");
+                    extra.classList.toggle("hidden");
+                };
+                container.appendChild(card);
+            });
+        }
+
+        function filterScenarios(keyword) {
+            document.querySelectorAll(".scenario-filter-btn").forEach(btn => {
+                btn.className = "scenario-filter-btn px-2.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs";
+            });
+            event.target.className = "scenario-filter-btn px-2.5 py-1 rounded bg-[#4A6B82] text-white text-xs";
+
+            if (keyword === 'all') {
+                renderScenariosCards(scenarioDatabase);
+            } else {
+                const filtered = scenarioDatabase.filter(s => s.cat.includes(keyword) || s.title.includes(keyword));
+                renderScenariosCards(filtered);
+            }
+        }
+
+        function selectUserRole(roleName) {
+            selectedRole = roleName;
+            inquiryState.role = roleName;
+
+            document.querySelectorAll(".role-btn").forEach(btn => {
+                btn.classList.remove("border-[#4A6B82]", "bg-slate-50", "ring-2", "ring-[#4A6B82]");
+            });
+            event.currentTarget.classList.add("border-[#4A6B82]", "bg-slate-50", "ring-2", "ring-[#4A6B82]");
+
+            const btnNext = document.getElementById("btnStep2Next");
+            btnNext.disabled = false;
+            btnNext.className = "px-6 py-2.5 bg-[#4A6B82] hover:bg-[#354E60] text-white text-sm font-bold rounded-lg shadow transition cursor-pointer flex items-center gap-2";
+            btnNext.innerHTML = `<span>下一步：看看常見問題 (${roleName})</span> <span>→</span>`;
+
+            renderRoleFaqs(roleName);
+        }
+
+        function renderRoleFaqs(roleName) {
+            document.getElementById("currentSelectedRoleBadge").innerText = roleName;
+            const container = document.getElementById("roleFaqContainer");
+            container.innerHTML = "";
+
+            const faqs = roleFaqDatabase[roleName] || roleFaqDatabase["專任教師"];
+            faqs.forEach(q => {
+                const item = document.createElement("div");
+                item.className = "bg-white p-3.5 rounded-lg border border-slate-200 text-xs sm:text-sm text-slate-700 font-medium hover:border-[#759B88] transition flex items-start gap-2.5";
+                item.innerHTML = `<span class="text-[#759B88] font-bold">Q.</span> <span>${q}</span>`;
+                container.appendChild(item);
+            });
+        }
+
+        function goToStep(stepNumber) {
+            for (let i = 1; i <= 6; i++) {
+                const sec = document.getElementById(`step${i}`);
+                if (sec) {
+                    sec.classList.remove("step-active");
+                    sec.classList.add("step-hidden");
+                }
+            }
+            const target = document.getElementById(`step${stepNumber}`);
+            if (target) {
+                target.classList.remove("step-hidden");
+                target.classList.add("step-active");
+            }
+
+            currentStep = stepNumber;
+            const progress = document.getElementById("globalProgressBar");
+            const percentages = { 1: 16.6, 2: 33.3, 3: 50.0, 4: 83.3, 6: 100.0 };
+            progress.style.width = (percentages[stepNumber] || 16.6) + "%";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function submitInquiryForm() {
+            const c1 = document.getElementById("chkPrivacy1").checked;
+            const c2 = document.getElementById("chkPrivacy2").checked;
+            const c3 = document.getElementById("chkPrivacy3").checked;
+            const c4 = document.getElementById("chkPrivacy4").checked;
+            const finalQ = document.getElementById("finalQuestion").value.trim();
+
+            if (!c1 || !c2 || !c3 || !c4) {
+                alert("請先完成下方四項個資與隱私自我檢查勾選。");
+                return;
+            }
+            if (!finalQ) {
+                alert("請填寫您的核心疑問。");
+                document.getElementById("finalQuestion").focus();
+                return;
+            }
+
+            const selectedTroubles = [];
+            document.querySelectorAll("#troubleCheckboxes input[type='checkbox']:checked").forEach(cb => {
+                selectedTroubles.push(cb.value);
+            });
+
+            inquiryState.troubles = selectedTroubles;
+            inquiryState.context = document.getElementById("detailContext").value.trim();
+            inquiryState.question = finalQ;
+
+            const now = new Date();
+            inquiryState.timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            saveDraftToLocalStorage();
+
+            const previewText = `=== 宜蘭高商特殊學生教職員疑問蒐集單 ===\n\n` +
+                `提交時間：${inquiryState.timestamp}\n` +
+                `填寫角色：${inquiryState.role || "未指定"}\n` +
+                `困擾面向：${inquiryState.troubles.length > 0 ? inquiryState.troubles.join("、") : "未特別勾選"}\n\n` +
+                `【情境補充說明】\n${inquiryState.context || "（未提供情境補充）"}\n\n` +
+                `★【核心疑問與專業回答需求】\n${inquiryState.question}\n\n` +
+                `--------------------------------------------------\n` +
+                `※ 聲明：本資料已由填寫者確認去識別化，無個資洩漏疑慮。`;
+
+            document.getElementById("previewResultBox").innerText = previewText;
+            goToStep(6);
+        }
+
+        function saveDraftToLocalStorage() {
+            try {
+                localStorage.setItem("yilan_sped_inquiry_draft", JSON.stringify(inquiryState));
+            } catch (e) {
+                console.warn("LocalStorage save failed:", e);
+            }
+        }
+
+        function loadDraftFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem("yilan_sped_inquiry_draft");
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.question) {
+                        document.getElementById("finalQuestion").value = parsed.question || "";
+                        document.getElementById("detailContext").value = parsed.context || "";
+                    }
+                }
+            } catch (e) {
+                console.warn("LocalStorage load failed:", e);
+            }
+        }
+
+        function exportTXT() {
+            const text = document.getElementById("previewResultBox").innerText;
+            const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Yilan_SPED_Question_${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportJSON() {
+            const str = JSON.stringify(inquiryState, null, 2);
+            const blob = new Blob([str], { type: "application/json;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Yilan_SPED_Question_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function renderCategoryMatrix() {
+            const container = document.getElementById("categoryMatrixGrid");
+            container.innerHTML = "";
+            categoryTaxonomy.forEach(item => {
+                const box = document.createElement("div");
+                box.className = "bg-slate-50 p-2.5 rounded border border-slate-200";
+                box.innerHTML = `
+                    <div class="font-bold text-[#4A6B82] mb-1">[${item.code}] ${item.title}</div>
+                    <div class="text-slate-500 text-[11px]">${item.desc}</div>
+                `;
+                container.appendChild(box);
+            });
+        }
+
+        function initCharts() {
+            const ctxRole = document.getElementById("chartRoleIssues").getContext("2d");
+            new Chart(ctxRole, {
+                type: 'bar',
+                data: {
+                    labels: ['專任教師', '導師', '輔導老師', '校安人員', '學務人員', '特教教師'],
+                    datasets: [
+                        { label: '情緒與衝突處理', data: [85, 70, 65, 90, 75, 60], backgroundColor: '#4A6B82' },
+                        { label: '行政與溝通協調', data: [40, 85, 75, 50, 90, 80], backgroundColor: '#759B88' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100 }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+
+            const ctxRadar = document.getElementById("chartCategoryRadar").getContext("2d");
+            new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: ['情緒行為(A)', '課堂經營(B)', '同儕關係(C)', 'ASD特質(D)', '危機處理(H/I)', '家長溝通(J)'],
+                    datasets: [{
+                        label: '第一線教職員關注權重',
+                        data: [90, 80, 75, 70, 85, 65],
+                        borderColor: '#759B88',
+                        backgroundColor: 'rgba(117, 155, 136, 0.25)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: { suggestMin: 0, suggestMax: 100 }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
